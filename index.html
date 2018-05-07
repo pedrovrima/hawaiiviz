@@ -54,7 +54,7 @@
             <svg width="250" height="300" id="lege"></svg>
 </div>
 
-	<svg width="2000px" height="400" id="pointc" onmouseover="mouseover2"></svg>
+	<svg width="900px" height="400" id="pointc" onmouseover="mouseover2"></svg>
 	    <svg width="900" height="400" id="line" class="plot"></svg>
     
     <script src="https://d3js.org/d3.v4.min.js"></script>
@@ -89,7 +89,7 @@
     width = svg.attr("width") - margin.left - margin.right,
     height = svg.attr("height") - margin.top - margin.bottom;
 
-
+	
     var parseDate = d3.timeParse("%Y %b %d");
 
     var x = d3.scaleTime().range([0, width]),
@@ -104,6 +104,11 @@
     .curve(d3.curveBasis)
     ;
 
+	    d3.selectAll(".plot")
+	    .append("g")
+	    .append("text")
+	    .text("Activity Budgets")
+	    
     var g3=pcountsv.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
