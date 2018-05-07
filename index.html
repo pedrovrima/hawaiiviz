@@ -1,0 +1,480 @@
+    <!DOCTYPE html>
+    <meta charset="utf-8">
+    <head>
+    <style>
+ 
+        div.menu{
+            background-color : black
+        }
+        
+    li {
+    background-color: rgb(190, 196, 190);
+    border-style: solid;
+    border-radius:5px;
+    border-width: 0px;
+    text-align:center;
+    border-color: black;
+    padding: 2px;
+    margin: 5px;
+    max-width:95px;
+    list-style-type: none;
+    display:inline-block;
+        font-size:25px;
+    }
+        .overlay {
+  fill: none;
+  pointer-events: all;
+}
+
+        .title{
+    font:40px sans-serif;
+    font-weight: bolder;
+    
+        }
+    
+        div#title{
+            margin-left: 20px;
+    
+            
+        }
+        .texto{
+    font:10px sans-serif;
+    font-weight: bolder;
+    padding-right: 20px;
+
+    }
+    </style>
+
+    </head>
+    <body>
+    <div id="container"></div>
+    <div id="title"></div>
+<div>
+        <svg width="750" height="400" class="plot"></svg>
+            <svg width="250" height="300" id="lege"></svg>
+</div>
+    <div><svg width="500" height="400" id="line" class="plot"></svg>
+    <svg width="500" height="400" id="pointc" onmouseover="mouseover2"></svg>
+</div>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+    <script>
+
+    /*Lengend*/
+    var lege = d3.select("#lege"),
+    margin = {top: 20, right: 20, bottom: 20, left: 20},
+    width = lege.attr("width") - margin.left - margin.right,
+    height = lege.attr("height") - margin.top - margin.bottom;
+
+
+
+    /* P. Count */
+
+    var pcountsv=d3.select("#pointc"),
+    margin = {top: 20, right: 120, bottom: 30, left: 50},
+    width = pcountsv.attr("width") - margin.left - margin.right,
+    height = pcountsv.attr("height") - margin.top - margin.bottom;
+
+
+    /*Plot*/
+    var svg = d3.select("svg"),
+    margin = {top: 20, right: 120, bottom: 30, left: 50},
+    width = svg.attr("width") - margin.left - margin.right,
+    height = svg.attr("height") - margin.top - margin.bottom;
+
+    var line = d3.select("#line"),
+    margin = {top: 20, right: 120, bottom: 30, left: 50},
+    width = svg.attr("width") - margin.left - margin.right,
+    height = svg.attr("height") - margin.top - margin.bottom;
+
+
+    var parseDate = d3.timeParse("%Y %b %d");
+
+    var x = d3.scaleTime().range([0, width]),
+    y = d3.scaleLinear().range([height, 0]),
+    z = d3.scaleOrdinal(['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628','#f781bf','#999999']);
+    var stack = d3.stack();
+
+    var area = d3.area()
+    .x(function(d, i) { return x(d.data.date); })
+    .y0(function(d) { return y(d[0]); })
+    .y1(function(d) { return y(d[1]); })
+    .curve(d3.curveBasis)
+    ;
+
+    var g3=pcountsv.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    var g2=line.append("g")    
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    var g = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    d3.queue()
+    .defer(d3.csv,"actab.csv") 
+    .defer(d3.csv,"nams.csv")    
+    .defer(d3.csv,"pctab.csv")
+    .awaitAll(ready);
+
+    function ready(error, data1) {
+    var datab=data1[0]
+
+    var data = datab.map(function(d){
+
+    d.date = parseTime(d.date);
+    d.spp = d['spp']
+    for (var i = 2, n = datab.columns.length; i < n; ++i) d[datab.columns[i]] = d[datab.columns[i]] / 100;
+    d.values=[]
+    for (var i = 2, n = datab.columns.length; i < n; ++i) d.values[datab.columns[i]] = d[datab.columns[i]] ;
+    return d;})
+
+
+    var datapc=data1[2]
+    var datax = datapc.map(function(d){
+    d.date=parseTime(d.date);
+    d.spp=d.spp;
+    d.mean=+d.mean
+    return d 
+
+    })
+
+    var pcspp=d3.nest()
+    .key(function(d){return d.spp})
+    .entries(datax)
+
+    if (error) throw error;
+
+    var keys = datab.columns.slice(2);
+    var spp=d3.nest()
+    .key(function(d){return d.spp})
+    .entries(data)
+    var Unique = d3.set(data, function(d) {return d.spp});
+    var spp2=d3.nest()
+    .key(function(d){return d.spp})
+    .entries(data1[1])
+
+   
+    var cont=d3.select("#container")
+    .append("div")
+    .attr("class","menu")
+    .attr("width",100)
+    .attr("height",100);
+
+    var buttons= cont.selectAll("li")
+    .data(Unique.values())
+    .enter()
+    .append("li")
+    .attr("class", function(d, i) {
+    return (d, i);
+    })
+    .attr("active", true)
+    .text(function(d) {
+    return d;
+    });
+
+
+    x.domain(d3.extent(data, function(d) { return d.date; }));
+    z.domain(keys);
+    stack.keys(keys);
+
+
+    g.append("g")
+    .attr("class", "axis axis--x")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x));
+
+    g.append("g")
+    .attr("class", "axis axis--y")
+    .call(d3.axisLeft(y).ticks(10, "%"));
+
+    g2.append("g")
+    .attr("class", "axis axis--x")
+    .attr("transform", "translate(0," + height + ")")
+    .call(d3.axisBottom(x));
+
+    g2.append("g")
+    .attr("class", "axis axis--y")
+    .call(d3.axisLeft(y).ticks(10, "%"));
+
+    var yScale = d3.scaleLinear()
+    .domain([0, d3.max(datax, function(d) {
+    return d["mean"]})])
+    .range([height,0]);
+
+        var xScale = d3.scaleTime()
+			.domain(d3.extent(datax, function(d) {
+				return d["date"]}))
+                 .range([0,width])
+			
+        
+ 
+
+    var yAxis=d3.axisLeft().scale(yScale);
+        var xAxis = d3.axisBottom()
+			.scale(xScale)
+		;
+    g3.append("g")
+    .attr("class", "yAxis")
+    .attr("class", "axis")
+    .call(yAxis);
+
+  g3.append("g")
+    .attr("class", "xAxis")
+    .attr("class", "axis")
+	.attr("transform", "translate(0," + height + ")")
+    .call(xAxis);
+
+    drawfig(spp,spp2,"APAP",datab,pcspp,datax)
+
+    buttons.on("click", function(az, i) {
+
+    d3.selectAll(".title").remove()    
+    g.selectAll(".layer").remove()
+    g2.selectAll(".lineu").remove()
+        g3.selectAll(".pcline").remove()
+    lege.selectAll("text").remove()
+    lege.selectAll("rect").remove()
+    drawfig(spp,spp2,az,datab,pcspp,datax)
+
+    })
+    };
+
+        
+    var parseTime = d3.timeParse("%y-%m");
+
+    var drawfig=function(spp,spp2,sppa,datab,pcspp,datax){
+        d3.selectAll("#title")
+            .append("g")
+                    .append("text")
+        .text(sppa)
+        .attr("class","title")
+        var yScale = d3.scaleLinear()
+    .domain([0, d3.max(datax, function(d) {
+    return d["mean"]})])
+    .range([height,0]);
+    
+        var xScale = d3.scaleTime()
+			.domain(d3.extent(datax, function(d) {
+				return d["date"];}))
+        .range([0,width])
+        
+        var line2 = d3.line()
+    .x(function(d) {
+        return xScale(d.date);
+    })
+    .y(function(d) {
+        return yScale(d.mean);
+    })
+            .curve(d3.curveBasis);
+
+
+    var mm=spp.filter(function (d) { return d.key === sppa })    
+    var xx=d3.values(mm).map(function(d){
+    return d.values})
+
+    var mm2=spp2.filter(function (d) { return d.key ===sppa})    
+    var xx2=d3.values(mm2).map(function(d){
+    return d.values})
+    var txta= xx2[0]
+    var mm3= pcspp.filter(function (d) { return d.key ===sppa})
+    
+        var xx3=d3.values(mm3).map(function(d){
+    return d.values})
+    var mvar=xx3[0]
+        
+
+    var txt=txta.map(function(d){return [d.A1,d.A2,d.A3,d.A4,d.A5,d.A6]})
+        console.log(x(100103993)-xScale(100103993))
+
+    var tta = stack(xx[0]);
+
+    for(var  i=0;i<6;i++){
+    tta[i].key=txt[0][i]}
+        
+        var pcline = g3.selectAll(".pcline")
+        .data(mvar)
+        .attr("class","pcline")
+        .enter()
+        .append("g");
+        
+        pcline.append("path")
+        .attr("class","pcline")
+        .attr("d",line2(mvar))
+        .attr("stroke","black")
+            .attr("stroke-width", 4)
+    .attr("fill", "none")
+
+        console.log(mm3.map(function(d) {return d.mean}))
+    var lineal = g2.selectAll(".lineu")
+    .data(tta)
+    .attr("class","lineu")
+    .enter()
+    .append("g");
+    var keys = datab.columns.slice(2);
+
+    for(var i=0;i<6;i++){    
+    var lines=d3.line()
+    .x(function(d, i) { return x(d.date); })
+    .y(function(d){return y(d[keys[i]])})
+    .curve(d3.curveBasis);
+
+
+    svg.append("rect")
+      .attr("class", "overlay")
+      .attr("width", width)
+      .attr("height", height)
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+    .on("mouseover", mouseover)
+            .on("mouseout", mouseout)
+        .on("mousemove",mousemove)
+        
+        
+    line.append("rect")
+      .attr("class", "overlay")
+      .attr("width", width)
+      .attr("height", height)
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+    .on("mouseover", mouseover)
+            .on("mouseout", mouseout)
+        .on("mousemove",mousemove)
+        
+            
+        
+    pcountsv.append("rect")
+      .attr("class", "overlay")
+      .attr("width", width)
+      .attr("height", height)
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+    .on("mouseover", mouseover2)
+            .on("mouseout", mouseout)
+        .on("mousemove",mousemove2)
+        
+
+
+    lineal.append("path")
+    .attr("class","lineu")
+    .attr("d",lines(xx[0]))
+    .attr("stroke",z(txt[0][i]))
+    .attr("stroke-width", 4)
+    .attr("fill", "none")
+
+    }
+
+    var layer = g.selectAll(".layer")
+    .data(tta)
+    .enter().append("g")
+    .attr("class", "layer");
+        
+        
+    layer.append("path")
+    .attr("class", "area")
+    .style("fill", function(d) { return z(d.key); })
+    .attr("d", area);
+
+    var smllrec=lege.selectAll("rect")
+    .data(tta)
+    .attr("class","legerec")
+    .enter()
+    .append("rect")
+    .attr("x", 10)  
+    .attr("y", function(d){return 30+d.index*20;})
+    .attr("width", 20)
+    .attr("height",10)
+    .attr("fill",function(d) {return z(d.key);})
+
+    var legtxt=lege.selectAll("text")
+    .attr("class","legetext")
+    .data(tta)
+    .enter()
+    .append("text")
+    .attr("x", 35)  
+    .attr("y", function(d){return d.index*20+35;})
+    .attr("width", 20)
+    .attr("height",10)
+    .text(function(d) {return d.key;})
+    }
+
+    function mouseover(d) {
+        
+        var xx = d3.event.pageX
+        var test=d3.selectAll(".plot")
+        .append("g")
+        .append("rect")
+        .attr("class","tootl")
+        .attr("height",1000)
+        .attr("width",10)
+        .attr("opacity",0.5)
+        .attr("x",xx)
+        .attr("y",0)
+        .attr("fill","black")
+        
+        
+        var test=d3.selectAll("#pointc")
+        .append("g")
+        .append("rect")
+        .attr("class","tootl2")
+        .attr("height",1000)
+        .attr("width",10)
+        .attr("opacity",0.5)
+        .attr("x",xx+24.8395581)
+        .attr("y",0)
+        .attr("fill","black")
+    }
+
+        
+        
+            function mouseover2(d) {
+        
+        var xx = d3.event.pageX
+        var test=d3.selectAll(".plot")
+        .append("g")
+        .append("rect")
+        .attr("class","tootl")
+        .attr("height",1000)
+        .attr("width",10)
+        .attr("opacity",0.5)
+        .attr("x",xx-24.8395581)
+        .attr("y",0)
+        .attr("fill","black")
+        
+        
+        var test=d3.selectAll("#pointc")
+        .append("g")
+        .append("rect")
+        .attr("class","tootl2")
+        .attr("height",1000)
+        .attr("width",10)
+        .attr("opacity",0.5)
+        .attr("x",xx)
+        .attr("y",0)
+        .attr("fill","black")
+    }
+
+        
+        function mouseout(d) {
+    d3.selectAll('.tootl').remove();
+                d3.selectAll('.tootl2').remove();
+
+}
+
+        function mousemove(d) {
+            var xx = d3.event.pageX
+                d3.selectAll('.tootl').transition(0.000000001)
+                .attr("x",xx)
+                 d3.selectAll('.tootl2').transition(0.000000001)
+                .attr("x",xx+24.8395581)
+
+}
+               function mousemove2(d) {
+            var xx = d3.event.pageX
+                d3.selectAll('.tootl').transition(0.000000001)
+                .attr("x",xx-24.8395581)
+                 d3.selectAll('.tootl2').transition(0.000000001)
+                .attr("x",xx)
+
+}
+        
+
+
+    </script>
+    </body>
