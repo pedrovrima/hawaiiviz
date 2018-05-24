@@ -71,7 +71,7 @@ var spp =    d3.nest()
         
 
 var svg = d3.selectAll("div.container").select("svg")
-.data(spp[12].values)
+.data(spp[3].values)
 .enter()
 .append("svg")
 .attr("id",function(d){
@@ -85,7 +85,7 @@ var svg = d3.selectAll("div.container").select("svg")
 .attr("transform", "translate(" + width/2 + "," + height/2 + ")");
 
 
-var taba = spp[12].values[0].values
+var taba = spp[3].values[0].values
 
 var extent = d3.extent(taba, function(d) { return d.value; });
 
@@ -123,7 +123,7 @@ var extent = d3.extent(taba, function(d) { return d.value; });
         console.log(head)
         
     var text =d3.selectAll("svg")
-        .data(spp[12].values)
+        .data(spp[3].values)
     .filter(function(d){return d.key})
     .select("g")
     .selectAll("text")
