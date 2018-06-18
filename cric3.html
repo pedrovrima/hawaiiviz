@@ -60,7 +60,7 @@ var formatNumber = d3.format(".0%");
 var color = d3.scaleOrdinal()
    .range(["#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3","#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd","#ccebc5","#ffed6f"]);
 
-    d3.csv("data3.csv", function(error, data) {
+    d3.csv("datacric.csv", function(error, data) {
 
 var spp =    d3.nest()
 .key(function(d){return d.date})
@@ -202,7 +202,7 @@ var dt=0
                 dt++
 d3.selectAll(".headtext").remove()
         d3.selectAll(".aa").remove()
-            d3.csv("data3.csv", function(error, data) {
+            d3.csv("datacric.csv", function(error, data) {
                var spp =    d3.nest()
 .key(function(d){return d.date})
 .key(function(d){return d.spp})
@@ -226,7 +226,7 @@ var taba = spp[0].values[0].values
                 dt--
         d3.selectAll(".headtext").remove()
         d3.selectAll(".aa").remove()
-            d3.csv("data3.csv", function(error, data) {
+            d3.csv("datacric.csv", function(error, data) {
                var spp =    d3.nest()
 .key(function(d){return d.date})
 .key(function(d){return d.spp})
