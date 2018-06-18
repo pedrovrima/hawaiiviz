@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+
+      body {
+          margin: 0;
+          font-family: "Helvetica Neue", sans-serif;
+      }
+
+      .node rect {
+          cursor: move;
+          fill-opacity: .9;
+          shape-rendering: crispEdges;
+      }
+      .node text {
+          pointer-events: none;
+          text-shadow: 0px 0px 2px #fff;
+          font-size: 15px;
+      }
+
+
+      .head title {
+          pointer-events: none;
+          text-shadow: 0px 0px 2px #fff;
+          font-size: .8m;
+      }
+      
+      .link {
+          fill: none;
+          stroke: #000;
+          stroke-opacity: .5;
+      }
+      .link:hover {
+          stroke-opacity: 1;
+      }
+      .header{
+	  display: grid;
+	  grid-template-columns: auto auto auto ;
+	  margin-bottom: 90px;
+
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class=header> 
+      <div class="vv">
+        <input name="updateButton" 
+               type="button" 
+               value="Down" 
+               onclick="onclm(dt)" />
+      </div>
+      <div class=head>
+      </div>
+      
+      <div class="vv">
+        <input name="updateButton" 
+               type="button" 
+               value="Up" 
+               onclick="onclp(1)" />
+      </div>
+    </div>
+    
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="sankey.js"></script>
+    
+    <script>
+      // set the dimensions and margins of the graph
+      var margin = {top: 10, right: 10, bottom: 10, left: 10},
+          width = window.innerWidth - margin.left - margin.right,
+          height = window.innerHeight - margin.top - margin.bottom;
+
+      // format variables
+      var formatNumber = d3.format(",.0f"),    // zero decimal places
+          format = function(d) { return "N.Ind=" + formatNumber(d); },
+          color = d3.scaleOrdinal(d3.schemeCategory20);
+
+      // append the svg object to the body of the page
+      var svg = d3.select("body").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", 
+                "translate(" + margin.left + "," + margin.top + ")");
+
+      // Set the sankey diagram properties
+      var sankey = d3.sankey()
+          .nodeWidth(5)
+          .nodePadding(2)
+          .size([width*1.5, height/1.5]);
+
+      var path = sankey.link();
+
+      // load the data
+      d3.queue()
+    .defer(d3.csv, "data3.csv")
+    .await(ready);
+
+      function ready(error, precsv){
+	   var dt=20
+	var alldat= precsv.map(function(d){ return d.date}) 
+	  var datu = alldat.filter(onlyUnique)
+	  var datea= datu[dt]
+	  var csv = precsv.filter(function(d){return d.date==datea})
+          // create an array to push all sources and targets, before making them unique
+          var arr = [];
+          csv.forEach(function(d){
+
+              arr.push(d.source);
+              arr.push(d.target);
+
+          });
+
+          // create nodes array
+          var nodes = arr.filter(onlyUnique).map(function(d,i){
+              return {
+		  node: i,
+		  name: d
+              }
+          });
+
+          
+          // create links array
+          var links = csv.map(function(csv_row){
+              return {
+		  source: getNode("source"),
+		  target: getNode("target"),
+		  value: +csv_row.value
+              }
+
+              function getNode(type){
+		  return nodes.filter(function(node_object){ return node_object.name == csv_row[type]; })[0].node;
+              }
+
+          });
+
+          sankey
+              .nodes(nodes)
+              .links(links)
+              .layout(32);
+
+          
+          // add in the links
+          var link = svg.append("g").selectAll(".link")
+              .data(links)
+              .enter().append("path")
+              .attr("class", "link")
+              .attr("d", path)
+              .style("stroke", function(d){
+		  return color(d.source.name.replace(/ .*/, ""));
+              })
+              .style("stroke-width", function(d) { return d.dy/10; })
+              .sort(function(a, b) { return b.dy/10 - a.dy/10; })
+              .attr("id",function(d){return d.source.name+d.target.name});
+
+
+          // add the link titles
+          link.append("title")
+              .text(function(d) {
+		  return d.source.name + " → " + 
+                      d.target.name + "\n" + format(d.value); });
+
+
+	  var hear = d3.select("div.head")
+	      .append("text")
+	      .text(datea)
+              .style("font-size","30px")
+	      .style("color","black");
+    
+          
+          // add in the nodes
+          var node = svg.append("g").selectAll(".node")
+              .data(nodes)
+              .enter().append("g")
+              .attr("class", "node")
+              .attr("transform", function(d) { 
+		  return "translate(" + d.x + "," + d.y + ")"; 
+              })
+              .call(d3.drag()
+		    .subject(function(d) {
+			return d;
+		    })
+		    .on("start", function() {
+			this.parentNode.appendChild(this);
+		    })
+		    .on("drag", dragmove));
+
+          
+          
+          // add the rectangles for the nodes
+          node.append("circle")
+              .attr("r", function(d) { return d.dy/10; })
+              .style("fill", function(d) { 
+		  return d.color = color(d.name.replace(/ .*/, "")); 
+              })
+              .style("stroke", function(d) { 
+		  return d3.rgb(d.color).darker(2); 
+              })
+              .attr("id",function(d) {return d.name})
+              .append("title")
+              .text(function(d) { 
+		  return d.name + "\n" + format(d.value); 
+              });
+
+          // add in the title for the nodes
+          node.append("text")
+              .attr("x", -6)
+              .attr("y", function(d) { return d.dy / 20; })
+              .attr("dy", ".35em")
+              .attr("text-anchor", "end")
+              .attr("transform", null)
+              .text(function(d) { return d.name; })
+              .filter(function(d) { return d.x < width / 2; })
+              .attr("x", 6 + sankey.nodeWidth())
+              .attr("text-anchor", "start");
+
+          // the function for moving the nodes
+          function dragmove(d) {
+              d3.select(this)
+		  .attr("transform", 
+			"translate(" 
+			+ (d.x = Math.max(
+                            0, Math.min(width - d.dx, d3.event.x))
+			  ) + "," 
+			+ (d.y = Math.max(
+                            0, Math.min(height - d.dy, d3.event.y))
+			  ) + ")");
+              sankey.relayout();
+              link.attr("d", path);
+          }
+
+      }
+
+      // unique values of an array
+      function onlyUnique(value, index, self) { 
+          return self.indexOf(value) === index;
+      }
+
+      dt=0
+      
+      function onclp(xx){
+	   dt++
+	  console.log(dt)
+	  d3.csv("data3.csv", function(error, precsv) {
+	      var alldat= precsv.map(function(d){ return d.date})
+	  var datu = alldat.filter(onlyUnique)
+	  var datea= datu[dt]
+              var csv = precsv.filter(function(d){return d.date==datea})
+              // create an array to push all sources and targets, before making them unique
+
+
+	  // create an array to push all sources and targets, before making them unique
+
+              var arr = [];
+              csv.forEach(function(d){
+
+		  arr.push(d.source);
+		  arr.push(d.target);
+
+              });
+
+              
+              var nodes = arr.filter(onlyUnique).map(function(d,i){
+		  return {
+		      node: i,
+		      name: d
+		  }
+              });
+
+              
+              
+              
+              var links = csv.map(function(csv_row){
+		  return {
+		      source: getNode("source"),
+		      target: getNode("target"),
+		      value: +csv_row.value
+		  }
+
+		  function getNode(type){
+		      return nodes.filter(function(node_object){ return node_object.name == csv_row[type]; })[0].node;
+		  }
+
+              });            
+              // create nodes array
+              
+              sankey
+		  .nodes(nodes)
+		  .links(links)
+		  .layout(32);
+              
+	      var nodez= nodes.map(function(d){return {
+		  name:d.name, dy:d.dy}})
+	      
+	      var newlink = svg.selectAll("circle")
+		  .data(nodez, function(d) {return d.name})
+
+	      console.log(newlink)
+              
+	      newlink.transition()
+		  .duration(500)
+		  .attr("r", function(d,i) {return d.dy/4.75; })
+
+	      var headd = d3.selectAll("div.head")
+		  .select("text")
+		  .transition()
+		  .duration(500)
+		  .text(datea)
+		  
+	      var nd = links.map(function(d){return{ 
+		  name:d.source.name+d.target.name, dy: d.dy}}) 
+	      
+
+
+
+	      nd.forEach(function(d){
+		  d3.select("#"+d.name)
+		      .transition()
+		      .duration(500)
+		      .style("stroke-width", d.dy/4.75)
+		  
+	      })                       
+	      
+
+          })
+      }     
+
+
+
+function onclm(xx){
+    dt--
+    d3.csv("data3.csv", function(error, precsv) {
+	var alldat= precsv.map(function(d){ return d.date}) 
+var datu = alldat.filter(onlyUnique)
+	  var datea= datu[dt]
+	
+              var csv = precsv.filter(function(d){return d.date==datea})
+              // create an array to push all sources and targets, before making them unique
+
+              var arr = [];
+              csv.forEach(function(d){
+
+		  arr.push(d.source);
+		  arr.push(d.target);
+
+              });
+
+              
+              var nodes = arr.filter(onlyUnique).map(function(d,i){
+		  return {
+		      node: i,
+		      name: d
+		  }
+              });
+
+              
+              
+              
+              var links = csv.map(function(csv_row){
+		  return {
+		      source: getNode("source"),
+		      target: getNode("target"),
+		      value: +csv_row.value
+		  }
+
+		  function getNode(type){
+		      return nodes.filter(function(node_object){ return node_object.name == csv_row[type]; })[0].node;
+		  }
+
+              });            
+              // create nodes array
+              
+              sankey
+		  .nodes(nodes)
+		  .links(links)
+		  .layout(32);
+              
+	      var nodez= nodes.map(function(d){return {
+		  name:d.name, dy:d.dy}})
+	      
+	      var newlink = svg.selectAll("circle")
+		  .data(nodez, function(d) {return d.name})
+
+	      console.log(newlink)
+              
+	      newlink.transition()
+		  .duration(500)
+		  .attr("r", function(d,i) {return d.dy/4.75; })
+
+	      var headd = d3.selectAll("div.head")
+		  .select("text")
+		  .transition()
+		  .duration(500)
+		  .text(datea)
+		  
+	      var nd = links.map(function(d){return{ 
+		  name:d.source.name+d.target.name, dy: d.dy}}) 
+	      
+
+
+
+	      nd.forEach(function(d){
+		  d3.select("#"+d.name)
+		      .transition()
+		      .duration(500)
+		      .style("stroke-width", d.dy/4.75)
+		  
+	      })                       
+	      
+
+          })
+      }     
+
+      
+      
+      
+    </script>
+  </body>
+</html>
